@@ -132,3 +132,23 @@ body {
 .tick line{
   opacity: 0.2;
 }
+
+.Support{
+  visibility: visible;
+}
+
+.Middle{
+  visibility: visible;
+}
+
+.Top{
+  visibility: visible;
+}
+
+.Jungle{
+  visibility: visible;
+}
+
+.ADC{
+  visibility: visible;
+}
