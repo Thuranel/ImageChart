@@ -107,6 +107,7 @@ angular.module('imageChartApp')
 
                 container.call(tip);
 
+                //Load images into patterns to use later in circle data
                 var defs = svg.append("defs").attr("id", "imgdefs");
 
                 data.forEach(function (d) {
@@ -126,6 +127,10 @@ angular.module('imageChartApp')
                         .attr("xlink:href", "//ddragon.leagueoflegends.com/cdn/" + config.patchVersion + "/img/champion/" + d.key + ".png");
                 });
 
+                // setup stroke color
+                var cValue = function(d) { return d.role;},
+                    color = d3.scale.category20();
+
                 //Place Data
                 svg.selectAll(".dot")
                     .data(data)
@@ -140,7 +145,10 @@ angular.module('imageChartApp')
                     .style("fill", function (d) {
                         return "url(#champ_avatar_" + d.key + d.role + ")";
                     })
-                    .style("stroke", "red")
+                    .style("stroke", function(d){
+                        return color(cValue(d));
+                    })
+                    .style("stroke-width", "2")
                     .attr("class", function(d){
                         return d.role;
                     })
