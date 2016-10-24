@@ -1,3 +1,8 @@
+#Pour championgg
+#docker run -it --rm -p8888:8888 data
+#Pour la base de données
+#docker run -it --rm -p27017:27017 data
+
 #!/bin/bash
 set -m
 apt-get update
