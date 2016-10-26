@@ -15,7 +15,7 @@ angular.module('imageChartApp')
             //Initialize variables
             var config = {
                 "avatar_size": 50,
-                "patchVersion": "6.19.1"
+                "patchVersion": "6.20.1"
             };
 
             //Set base chart
@@ -29,29 +29,46 @@ angular.module('imageChartApp')
                 .append("g")
                 .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-            var container = svg.append("g");
+            //appends a rectangle to the svg to make the zoom work
+            var rect = svg.append("svg:rect")
+                .attr("width", width)
+                .attr("height", height)
+                .style("fill", "none")
+                .style("pointer-events", "all");
+
+            //appends a clip to the svg to make sure the points are restricted to the chart rectangle and not the svg
+            var clip = svg.append("defs").append("svg:clipPath")
+                .attr("id", "clip")
+                .append("svg:rect")
+                .attr("id", "clip-rect")
+                .attr("x", "0")
+                .attr("y", "0")
+                .attr('width', width)
+                .attr('height', height);
 
             //Load data
             d3.json("data.json", function (error, data) {
                 if (error) throw error;
 
+                var xMax = d3.max(data, function (d) {
+                    return d.general.winPercent;
+                });
+
+                var yMax = d3.max(data, function (d) {
+                    return d.general.playPercent;
+                });
+
                 var x = d3.scale.linear()
                     .range([0, width])
                     .domain([d3.min(data, function (d) {
-                        return d.general.winPercent - 1.5;
-                    }),
-                        d3.max(data, function (d) {
-                            return d.general.winPercent + 0.5;
-                        })]);
+                        return d.general.winPercent - 2;
+                    }), xMax + 2]);
 
                 var y = d3.scale.linear()
                     .range([height, 0])
                     .domain([d3.min(data, function (d) {
-                        return d.general.playPercent - 1.5;
-                    }),
-                        d3.max(data, function (d) {
-                            return d.general.playPercent + 0.5;
-                        })]);
+                        return d.general.playPercent - 2;
+                    }), yMax + 2]);
 
                 //Set Axis
                 var xAxis = d3.svg.axis()
@@ -71,7 +88,7 @@ angular.module('imageChartApp')
                     .tickPadding(10);
 
                 //Load axis
-                container.append("g")
+                svg.append("g")
                     .attr("class", "x axis")
                     .attr("transform", "translate(0," + height + ")")
                     .call(xAxis)
@@ -82,7 +99,7 @@ angular.module('imageChartApp')
                     .style("text-anchor", "end")
                     .text("Win (%)");
 
-                container.append("g")
+                svg.append("g")
                     .attr("class", "y axis")
                     .call(yAxis)
                     .append("text")
@@ -93,55 +110,22 @@ angular.module('imageChartApp')
                     .style("text-anchor", "end")
                     .text("Play (%)");
 
-                //Load tip
-                var tip = d3.tip()
-                    .attr('class', 'd3-tip')
-                    .offset([-10, 0])
-                    .html(function (d) {
-                        return "<strong> " + d.key + " " + d.role + " </strong>" +
-                            "<br>" +
-                            "<strong>Win %:</strong> <span>" + d.general.winPercent + "</span> " +
-                            "<br>" +
-                            "<strong>Play %:</strong> <span>" + d.general.playPercent + "</span> ";
-                    });
+                svg.call(tip);
 
-                container.call(tip);
-
-                //Load images into patterns to use later in circle data
-                var defs = svg.append("defs").attr("id", "imgdefs");
-
-                data.forEach(function (d) {
-                    var champPattern = defs.append("pattern")
-                        .attr("id", "champ_avatar_" + d.key + d.role)
-                        .attr("height", 1)
-                        .attr("width", 1)
-                        .attr("x", "0")
-                        .attr("y", "0")
-                        .attr("class", d.role);
-
-                    champPattern.append("image")
-                        .attr("x", 0)
-                        .attr("y", 0)
-                        .attr("height", config.avatar_size)
-                        .attr("width", config.avatar_size)
-                        .attr("xlink:href", "//ddragon.leagueoflegends.com/cdn/" + config.patchVersion + "/img/champion/" + d.key + ".png");
-                });
+                loadImagePatterns(svg, data, config);
 
                 // setup stroke color
                 var cValue = function(d) { return d.role;},
-                    color = d3.scale.category20();
+                    color = d3.scale.category10();
 
                 //Place Data
-                svg.selectAll(".dot")
+                svg.append("g").attr("clip-path", "url(#clip)")
+                    .selectAll(".dot")
                     .data(data)
                     .enter().append("circle")
-                    .attr("r", config.avatar_size / 2)
-                    .attr("cx", function (d) {
-                        return x(d.general.winPercent);
-                    })
-                    .attr("cy", function (d) {
-                        return y(d.general.playPercent);
-                    })
+                    .attr("id", "chartPoint")
+                    .attr("r", config.avatar_size/2)
+                    .attr("transform", transform)
                     .style("fill", function (d) {
                         return "url(#champ_avatar_" + d.key + d.role + ")";
                     })
@@ -155,26 +139,93 @@ angular.module('imageChartApp')
                     .on('mouseover', tip.show)
                     .on('mouseout', tip.hide);
 
+                loadLegend(svg, color, width);
 
-                //Load zoom
                 var zoom = d3.behavior.zoom()
-                    .scaleExtent([1, 20])
+                    .x(x)
+                    .y(y)
+                    .scaleExtent([1, 10])
                     .on("zoom", zoomed);
 
+                svg.call(zoom);
+
                 function zoomed() {
-                    //container.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
-                    //d3.selectAll("circle").attr("r", 5);
-                    //d3.selectAll("image")
-                    //    .attr("height", 10)
-                    //    .attr("width", 10);
+                    var trans = zoom.translate(),
+                        scale = zoom.scale();
+
+                    var tx = Math.min(0, Math.max(width * (1 - scale), trans[0]));
+                    var ty = Math.min(0, Math.max(height * (1 - scale), trans[1]));
+
+                    zoom.translate([tx, ty]);
+
+                    svg.select(".x.axis").call(xAxis);
+                    svg.select(".y.axis").call(yAxis);
+                    svg.selectAll("#chartPoint")
+                        .attr("transform", transform);
                 }
 
-                svg.call(zoom);
+                function transform(d) {
+                    return "translate(" + x(d.general.winPercent) +"," + y(d.general.playPercent)+")";
+                }
 
             });
         };
 
         $scope.changeVisibility = function(className){
             $('.' + className).toggle();
-        }
+        };
+
+        //load tip
+        var tip = d3.tip()
+            .attr('class', 'd3-tip')
+            .offset([-10, 0])
+            .html(function (d) {
+                return "<strong> " + d.key + " " + d.role + " </strong>" +
+                    "<br>" +
+                    "<strong>Win %:</strong> <span>" + d.general.winPercent + "</span> " +
+                    "<br>" +
+                    "<strong>Play %:</strong> <span>" + d.general.playPercent + "</span> ";
+            });
+
+        //load Legend to show the color of data
+        var loadLegend = function(svg, color, width){
+
+            var legend = svg.selectAll(".legend")
+                .data(color.domain())
+                .enter().append("g")
+                .classed("legend", true)
+                .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+            legend.append("circle")
+                .attr("r", 3.5)
+                .attr("cx", width - 55)
+                .attr("fill", color);
+
+            legend.append("text")
+                .attr("x", width - 50)
+                .attr("dy", ".35em")
+                .text(function(d) { return d; });
+        };
+
+        //Load images into patterns to use later in circle data
+        var loadImagePatterns = function(svg, data, config){
+            var defs = svg.append("defs").attr("id", "imgdefs");
+
+            data.forEach(function (d) {
+                var champPattern = defs.append("pattern")
+                    .attr("id", "champ_avatar_" + d.key + d.role)
+                    .attr("height", 1)
+                    .attr("width", 1)
+                    .attr("x", "0")
+                    .attr("y", "0")
+                    .attr("class", d.role);
+
+                champPattern.append("image")
+                    .attr("x", 0)
+                    .attr("y", 0)
+                    .attr("height", config.avatar_size)
+                    .attr("width", config.avatar_size)
+                    .attr("xlink:href", "//ddragon.leagueoflegends.com/cdn/" + config.patchVersion + "/img/champion/" + d.key + ".png");
+            });
+        };
     });

@@ -132,3 +132,7 @@ body {
 .tick line{
   opacity: 0.2;
 }
+
+.legend{
+  background-color: #ffffff;
+}
