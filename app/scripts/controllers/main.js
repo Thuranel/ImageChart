@@ -14,18 +14,29 @@ angular.module('imageChartApp')
 
             //Initialize variables
             var config = {
-                "avatar_size": 50,
-                "patchVersion": "6.20.1"
+                avatar_size : 50,
+                patchVersion : "6.20.1",
+                chart_dimension : {
+                    chart_width : 960,
+                    chart_height : 500
+                },
+                margin : {
+                    top: 20,
+                    right: 20,
+                    bottom: 30,
+                    left: 30
+                },
+                domain_margin : 2,
+                max_zoom : 10
             };
 
             //Set base chart
-            var margin = {top: 20, right: 20, bottom: 30, left: 40},
-                width = 960 - margin.left - margin.right,
-                height = 500 - margin.top - margin.bottom;
+            var margin = config.margin,
+                width = config.chart_dimension.chart_width - margin.left - margin.right,
+                height = config.chart_dimension.chart_height - margin.top - margin.bottom;
 
             var svg = d3.select("#chart").append("svg")
-                .attr("width", width + margin.left + margin.right)
-                .attr("height", height + margin.top + margin.bottom)
+                .attr("viewBox", "0 0 " + (width + margin.left + margin.right) + " " + (height + margin.top + margin.bottom))
                 .append("g")
                 .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
@@ -50,8 +61,16 @@ angular.module('imageChartApp')
             d3.json("data.json", function (error, data) {
                 if (error) throw error;
 
+                var xMin = d3.min(data, function (d) {
+                    return d.general.winPercent;
+                });
+
                 var xMax = d3.max(data, function (d) {
                     return d.general.winPercent;
+                });
+
+                var yMin = d3.min(data, function (d) {
+                    return d.general.playPercent;
                 });
 
                 var yMax = d3.max(data, function (d) {
@@ -60,15 +79,11 @@ angular.module('imageChartApp')
 
                 var x = d3.scale.linear()
                     .range([0, width])
-                    .domain([d3.min(data, function (d) {
-                        return d.general.winPercent - 2;
-                    }), xMax + 2]);
+                    .domain([ xMin - config.domain_margin, xMax + config.domain_margin]);
 
                 var y = d3.scale.linear()
                     .range([height, 0])
-                    .domain([d3.min(data, function (d) {
-                        return d.general.playPercent - 2;
-                    }), yMax + 2]);
+                    .domain([ yMin - config.domain_margin, yMax + config.domain_margin]);
 
                 //Set Axis
                 var xAxis = d3.svg.axis()
@@ -88,27 +103,9 @@ angular.module('imageChartApp')
                     .tickPadding(10);
 
                 //Load axis
-                svg.append("g")
-                    .attr("class", "x axis")
-                    .attr("transform", "translate(0," + height + ")")
-                    .call(xAxis)
-                    .append("text")
-                    .attr("class", "label")
-                    .attr("x", width)
-                    .attr("y", -6)
-                    .style("text-anchor", "end")
-                    .text("Win (%)");
+                loadXaxis(svg, xAxis, height, width);
 
-                svg.append("g")
-                    .attr("class", "y axis")
-                    .call(yAxis)
-                    .append("text")
-                    .attr("class", "label")
-                    .attr("transform", "rotate(-90)")
-                    .attr("y", 6)
-                    .attr("dy", ".71em")
-                    .style("text-anchor", "end")
-                    .text("Play (%)");
+                loadYaxis(svg, yAxis);
 
                 svg.call(tip);
 
@@ -132,7 +129,7 @@ angular.module('imageChartApp')
                     .style("stroke", function(d){
                         return color(cValue(d));
                     })
-                    .style("stroke-width", "2")
+                    .style("stroke-width", "2.5")
                     .attr("class", function(d){
                         return d.role;
                     })
@@ -144,7 +141,7 @@ angular.module('imageChartApp')
                 var zoom = d3.behavior.zoom()
                     .x(x)
                     .y(y)
-                    .scaleExtent([1, 10])
+                    .scaleExtent([1, config.max_zoom])
                     .on("zoom", zoomed);
 
                 svg.call(zoom);
@@ -153,6 +150,7 @@ angular.module('imageChartApp')
                     var trans = zoom.translate(),
                         scale = zoom.scale();
 
+                    //limit drag
                     var tx = Math.min(0, Math.max(width * (1 - scale), trans[0]));
                     var ty = Math.min(0, Math.max(height * (1 - scale), trans[1]));
 
@@ -173,6 +171,32 @@ angular.module('imageChartApp')
 
         $scope.changeVisibility = function(className){
             $('.' + className).toggle();
+        };
+
+        var loadXaxis = function(svg, xAxis, height, width){
+            svg.append("g")
+                .attr("class", "x axis")
+                .attr("transform", "translate(0," + height + ")")
+                .call(xAxis)
+                .append("text")
+                .attr("class", "label")
+                .attr("x", width)
+                .attr("y", -6)
+                .style("text-anchor", "end")
+                .text("Win (%)");
+        };
+
+        var loadYaxis = function(svg, yAxis){
+            svg.append("g")
+                .attr("class", "y axis")
+                .call(yAxis)
+                .append("text")
+                .attr("class", "label")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 6)
+                .attr("dy", ".71em")
+                .style("text-anchor", "end")
+                .text("Play (%)");
         };
 
         //load tip
