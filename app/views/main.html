@@ -1,21 +1,25 @@
-<div  id="chart">
+<div class="row">
+    <div id="chart" class="col-xs-11 col-sm-11 col-md-11 col-lg-11">
 
+    </div>
+    <form data-ng-init="init()" class="col-xs-1 col-sm-1 col-md-1 col-lg-1">
+        <div id="roleCheck">
+            <div class="checkbox" id="Top">
+                <label><input type="checkbox" checked value="" ng-click="changeVisibility('Top')">Top</label>
+            </div>
+            <div class="checkbox">
+                <label><input type="checkbox" checked value="" ng-click="changeVisibility('Jungle')">Jungle</label>
+            </div>
+            <div class="checkbox">
+                <label><input type="checkbox" checked value="" ng-click="changeVisibility('Middle')">Middle</label>
+            </div>
+            <div class="checkbox">
+                <label><input type="checkbox" checked value="" ng-click="changeVisibility('ADC')">ADC</label>
+            </div>
+            <div class="checkbox">
+                <label><input type="checkbox" checked value="" ng-click="changeVisibility('Support')">Support</label>
+            </div>
+        </div>
+        <br>
+    </form>
 </div>
-<form data-ng-init="init()">
-    <div class="checkbox">
-        <label><input type="checkbox" checked value="" ng-click="changeVisibility('Top')">Top</label>
-    </div>
-    <div class="checkbox">
-        <label><input type="checkbox" checked value="" ng-click="changeVisibility('Jungle')">Jungle</label>
-    </div>
-    <div class="checkbox disabled">
-        <label><input type="checkbox" checked value="" ng-click="changeVisibility('Middle')">Middle</label>
-    </div>
-    <div class="checkbox">
-        <label><input type="checkbox" checked value="" ng-click="changeVisibility('ADC')">ADC</label>
-    </div>
-    <div class="checkbox">
-        <label><input type="checkbox" checked value="" ng-click="changeVisibility('Support')">Support</label>
-    </div>
-    <br>
-</form>
