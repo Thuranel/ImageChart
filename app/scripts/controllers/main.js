@@ -136,7 +136,8 @@ angular.module('imageChartApp')
                     .on('mouseover', tip.show)
                     .on('mouseout', tip.hide);
 
-                loadLegend(svg, color, width);
+                changeBoxColor(data, color);
+
 
                 var zoom = d3.behavior.zoom()
                     .x(x)
@@ -211,24 +212,10 @@ angular.module('imageChartApp')
                     "<strong>Play %:</strong> <span>" + d.general.playPercent + "</span> ";
             });
 
-        //load Legend to show the color of data
-        var loadLegend = function(svg, color, width){
-
-            var legend = svg.selectAll(".legend")
+        var changeBoxColor = function(data, color){
+            d3.selectAll(".roleBox")
                 .data(color.domain())
-                .enter().append("g")
-                .classed("legend", true)
-                .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
-
-            legend.append("circle")
-                .attr("r", 3.5)
-                .attr("cx", width - 55)
-                .attr("fill", color);
-
-            legend.append("text")
-                .attr("x", width - 50)
-                .attr("dy", ".35em")
-                .text(function(d) { return d; });
+                .style("color", color);
         };
 
         //Load images into patterns to use later in circle data
