@@ -8,6 +8,9 @@
  * Controller of the imageChartApp
  */
 angular.module('imageChartApp')
-  .controller('AboutCtrl', function () {
-
+  .controller('AboutCtrl', function ($scope, $location, $anchorScroll) {
+    $scope.scrollTo = function(id) {
+      $location.hash(id);
+      $anchorScroll();
+    }
   });
