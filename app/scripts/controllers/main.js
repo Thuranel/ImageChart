@@ -17,14 +17,14 @@ angular.module('imageChartApp')
                 avatar_size : 50,
                 patchVersion : "6.20.1",
                 chart_dimension : {
-                    chart_width : 960,
-                    chart_height : 500
+                    width : 960,
+                    height : 500
                 },
                 margin : {
                     top: 20,
                     right: 20,
                     bottom: 30,
-                    left: 30
+                    left: 40
                 },
                 domain_margin : 2,
                 max_zoom : 10
@@ -32,11 +32,11 @@ angular.module('imageChartApp')
 
             //Set base chart
             var margin = config.margin,
-                width = config.chart_dimension.chart_width - margin.left - margin.right,
-                height = config.chart_dimension.chart_height - margin.top - margin.bottom;
+                width = config.chart_dimension.width - margin.left - margin.right,
+                height = config.chart_dimension.height - margin.top - margin.bottom;
 
             var svg = d3.select("#chart").append("svg")
-                .attr("viewBox", "0 0 " + (width + margin.left + margin.right) + " " + (height + margin.top + margin.bottom))
+                .attr("viewBox", "0 0 " + (config.chart_dimension.width) + " " + (config.chart_dimension.height))
                 .append("g")
                 .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
@@ -112,8 +112,7 @@ angular.module('imageChartApp')
                 loadImagePatterns(svg, data, config);
 
                 // setup stroke color
-                var cValue = function(d) { return d.role;},
-                    color = d3.scale.category10();
+                var color = d3.scale.category10();
 
                 //Place Data
                 svg.append("g").attr("clip-path", "url(#clip)")
@@ -127,7 +126,7 @@ angular.module('imageChartApp')
                         return "url(#champ_avatar_" + d.key + d.role + ")";
                     })
                     .style("stroke", function(d){
-                        return color(cValue(d));
+                        return color(d.role);
                     })
                     .style("stroke-width", "2.5")
                     .attr("class", function(d){
@@ -136,7 +135,7 @@ angular.module('imageChartApp')
                     .on('mouseover', tip.show)
                     .on('mouseout', tip.hide);
 
-                changeBoxColor(data, color);
+                changeBoxColor(color);
 
 
                 var zoom = d3.behavior.zoom()
@@ -212,7 +211,7 @@ angular.module('imageChartApp')
                     "<strong>Play %:</strong> <span>" + d.general.playPercent + "</span> ";
             });
 
-        var changeBoxColor = function(data, color){
+        var changeBoxColor = function(color){
             d3.selectAll(".roleBox")
                 .data(color.domain())
                 .style("color", color);
@@ -228,8 +227,7 @@ angular.module('imageChartApp')
                     .attr("height", 1)
                     .attr("width", 1)
                     .attr("x", "0")
-                    .attr("y", "0")
-                    .attr("class", d.role);
+                    .attr("y", "0");
 
                 champPattern.append("image")
                     .attr("x", 0)

@@ -15,6 +15,7 @@
                 <ul>
                     <li> <a ng-click="scrollTo('acquisitionGraphique')"> Base du graphique </a> </li>
                     <li> <a ng-click="scrollTo('acquisitionTip')"> Tip </a> </li>
+                    <li> <a ng-click="scrollTo('acquisitionImages')"> Insertion des images </a> </li>
                     <li> <a ng-click="scrollTo('acquisitionCategorisation')"> Catégorisation </a> </li>
                     <li> <a ng-click="scrollTo('acquisitionZoom')"> Zoom </a> </li>
                 </ul>
@@ -115,18 +116,458 @@
         <div id="acquisitionConnaissances">
             <h3> Acquisition des connaissances </h3>
             <p> L’acquisition des connaissances s’est surtout faite sur la compréhension du fonctionnement de la librairie graphique D3. Par conséquent, nous n’allons pas expliquer le fonctionnement du cadriciel Angular, ni de toutes autres technologies utilisées pour réaliser notre projet. L’objectif principal du projet était de mettre des images dans un graphique pour simplifier la compréhension de celui-ci. Pour arriver à ce but, il n’aurait pas été nécessaire d’utiliser autre chose que D3. Les autres technologies servent à nous simplifier la tâche dans la conception de notre application, par conséquent il n’est pas nécessaire de décrire les connaissances acquises par celles-ci puisqu’elle n’aide pas à atteindre notre but.</p>
-            <p> La conception du graphique se fait en plusieurs étapes: La définition du graphique (ses marges, l’endroit qu’il prend dans la page, les axes, etc.), le tip (permet de voir le point exact des données en passant la souris par-dessus celles-ci), la catégorisation par couleurs (selon des groupes logiques) et le zoom. </p>
+            <p> La conception du graphique se fait en plusieurs étapes: La définition du graphique (ses marges, l’endroit qu’il prend dans la page, les axes, etc.), le tip (permet de voir le point exact des données en passant la souris par-dessus celles-ci), l'insertion des images, la catégorisation par couleurs (selon des groupes logiques) et le zoom. </p>
+            <br>
             <div id="acquisitionGraphique">
                 <h4> Base du graphique </h4>
+                <p> Pour créer le graphique, on commence par se créer une base avec les dimensions que l’on souhaite avoir. On définit la grandeur et la largeur en soustrayant les marges pour laisser de la place aux axes. La grandeur et la largeur serviront seulement à définir le rectangle où seront placées les données. </p>
+                <pre>
+                    <code>
+                        var config = {
+                            chart_dimension : {
+                                width : 960,
+                                height : 500
+                            },
+                            margin : {
+                                top: 20,
+                                right: 20,
+                                bottom: 30,
+                                left: 30
+                            }
+                        };
+
+                        var margin = config.margin,
+                            width = config.chart_dimension.width - margin.left - margin.right,
+                            height = config.chart_dimension.height - margin.top - margin.bottom;
+                     </code>
+                </pre>
+                <p> Par la suite, on place le graphique dans une balise svg. Une balise svg permettra de faire le graphique. On ajoute à notre svg une viewbox. Celle-ci permettra de faire en sorte que le graphique ne dépasse jamais les dimensions maximales. Sans celle-ci, si l’on zoom dans la page, le graphique dépassera dans les autres colonnes. Finalement, on ajoute un élément qui prendra la place réelle du graphique (sans les axes) où seront placées les données. Pour le mettre à sa place, on fait une translation pour le placer dans le coin droit pour garder les axes dans le bas et à gauche. </p>
+                <pre>
+                    <code>
+                        var svg = d3.select("#chart").append("svg")
+                            .attr("viewBox", "0 0 " + (config.chart_dimension.width) + " " + (config.chart_dimension.height))
+                            .append("g")
+                            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+                     </code>
+                </pre>
+                <p> Nous sommes maintenant prêts à gérer les données du graphique. Pour ce faire, il faudra mettre tout le code par rapport aux données (les limites des axes et des points) dans une fonction qui utilisera un fichier json pour avoir ses données. </p>
+                <pre>
+                    <code>
+                        d3.json("data.json", function (error, data) {
+                            if (error) throw error;
+
+                        });
+                    </code>
+                </pre>
+                <p> Dans cette fonction, on commence par définir les limites par rapport à nos données. En effet, si nos données vont de 30 à 70%, il est préférable de ne pas montrer les pourcentages entre 0 et 30 ainsi qu’entre 70 et 100%. Cela fait en sorte que notre graphique est plus claire et que nos données sont mieux puisqu’avec un domaine plus grand elles sont plus séparées les unes des autres. Premièrement, il faut trouver les points en X et en Y minimum et maximum. </p>
+                <pre>
+                    <code>
+                        var xMin = d3.min(data, function (d) {
+                            return d.general.winPercent;
+                        });
+
+                        var xMax = d3.max(data, function (d) {
+                            return d.general.winPercent;
+                        });
+
+                        var yMin = d3.min(data, function (d) {
+                            return d.general.playPercent;
+                        });
+
+                        var yMax = d3.max(data, function (d) {
+                            return d.general.playPercent;
+                        });
+                    </code>
+                </pre>
+                <p> Puis, il faut définir nos scales qui permettront de définir quel espace nos axes (range) prendront et sur quel domaine (domain). L’espace est défini par le grandeur pris par notre rectangle de données et le domaine est défini par la différence entre les points minimum et maximum de x et de y respectivement. Par contre, puisque l’on ne souhaite pas que nos points soient directement sur l’axe, il faut leur laisser une marge. Dans notre cas, puisque l’on souhaite avoir des images et que ceux-ci ne touchent pas les axes, il faut laisser une assez grande marge. Ce qui nous amène avec le résultat suivant. </p>
+                <pre>
+                    <code>
+                        var config = {
+                            (…)
+                            domain_margin : 2,
+                        };
+
+                        (…)
+
+                        var x = d3.scale.linear()
+                            .range([0, width])
+                            .domain([ xMin - config.domain_margin, xMax + config.domain_margin]);
+
+                        var y = d3.scale.linear()
+                            .range([height, 0])
+                            .domain([ yMin - config.domain_margin, yMax + config.domain_margin]);
+                    </code>
+                </pre>
+                <p> Ensuite, il faut mettre ces informations dans l’axe. L’axe appelle nos scales créés précédemment. C’est dans l’axe qu’on définit comment notre grillage sera fait. La valeur de «ticks» nous donne le nombre de lignes qu’il y aura dans la grille. Aussi, la valeur de tickPadding nous donne la distance en pixels qu’il y aura entre l’axe et le nombre donnant la valeur à notre point X. </p>
+                <pre>
+                    <code>
+                        var xAxis = d3.svg.axis()
+                            .scale(x)
+                            .orient("bottom")
+                            .ticks(20)
+                            .innerTickSize(-height)
+                            .outerTickSize(0)
+                            .tickPadding(10);
+
+                        var yAxis = d3.svg.axis()
+                            .scale(y)
+                            .orient("left")
+                            .ticks(15)
+                            .innerTickSize(-width)
+                            .outerTickSize(0)
+                            .tickPadding(10);
+                    </code>
+                </pre>
+                <p> Pour compléter l’axe, il suffit de rajouter celle-ci à notre svg précédemment créé. On leur donne un style CSS et puis on appelle notre axe pour qu’il soit ajouté. Finalement, on peut rajouter un texte qui identifie notre axe.  </p>
+                <pre>
+                    <code>
+                        svg.append("g")
+                            .attr("class", "x axis")
+                            .attr("transform", "translate(0," + height + ")")
+                            .call(xAxis)
+                            .append("text")
+                            .attr("class", "label")
+                            .attr("x", width)
+                            .attr("y", -6)
+                            .style("text-anchor", "end")
+                            .text("Win (%)");
+
+                        svg.append("g")
+                            .attr("class", "y axis")
+                            .call(yAxis)
+                            .append("text")
+                            .attr("class", "label")
+                            .attr("transform", "rotate(-90)")
+                            .attr("y", 6)
+                            .attr("dy", ".71em")
+                            .style("text-anchor", "end")
+                            .text("Play (%)");
+                    </code>
+                </pre>
+                <p> Il ne faut pas oublier de créer le CSS en lien avec nos éléments pour s’assurer que nos axes apparaissent correctement : </p>
+                <pre>
+                    <code>
+                        .grid .tick {
+                          stroke: lightgrey;
+                          opacity: 0.7;
+                        }
+                        .grid path {
+                          stroke-width: 0;
+                        }
+
+                        .axis path,
+                        .axis line{
+                          fill: none;
+                          stroke: black;
+                        }
+
+                        .tick text{
+                          font-size: 12px;
+                        }
+
+                        .tick line{
+                          opacity: 0.2;
+                        }
+                    </code>
+                </pre>
+                <p> Pour compléter la base de notre graphique, il reste uniquement à placer nos données. Cette dernière partie est assez simple. Il suffit d’ajouter un élément g dans lequel on sélectionne nos données et auxquelles on ajoute des cercles avec le rayon voulu. Pour faire placer nos point au bon endroit du graphique, on doit appeler une fonction qui fait la translation de chacun de nos points selon la donnée qu’on leur donne. </p>
+                <pre>
+                    <code>
+                        svg.append("g")
+                            .selectAll(".dot")
+                            .data(data)
+                            .enter().append("circle")
+                            .attr("r", 2)
+                            .attr("transform", transform);
+
+                        function transform(d) {
+                            return "translate(" + x(d.general.winPercent) +"," + y(d.general.playPercent)+")";
+                        }
+                    </code>
+                </pre>
+                <p> À la fin de cette expérimentation, on devrait avoir un graphique avec des axes, une grille et avec des points liés à nos données. </p>
             </div>
+            <br>
             <div id="acquisitionTip">
                 <h4> Tip </h4>
+                <p>  Le tip est la fonctionnalité qui nous permet de voir un rectangle nous donnant des détails sur notre élément de notre graphique (dans notre cas un point) lorsque l’on passe la souris par-dessus celui-ci. Grâce à la librairie D3-tip, faire afficher un tip est quelque chose d’assez simple. En effet, il suffit de faire un appel à la fonction de la librairie et d’injecter notre style et le html que l’on souhaite faire apparaître lorsque l’on passe la souris par-dessus un point. </p>
+                <pre>
+                    <code>
+                        var tip = d3.tip()
+                            .attr('class', 'd3-tip')
+                            .offset([-10, 0])
+                            .html(function (d) {
+                                return "<strong> " + d.key + " " + d.role + " </strong>" +
+                                    "<br>" +
+                                    "<strong>Win %:</strong> <span>" + d.general.winPercent + "</span> " +
+                                    "<br>" +
+                                    "<strong>Play %:</strong> <span>" + d.general.playPercent + "</span> ";
+                            });
+                    </code>
+                </pre>
+                <p> Du CSS nous permettra de faire le style que l’on souhaite avoir pour la boîte dans laquelle nos informations seront inscrites.  </p>
+                <pre>
+                    <code>
+                        .d3-tip {
+                          line-height: 1;
+                          font-weight: bold;
+                          padding: 12px;
+                          background: rgba(0, 0, 0, 0.8);
+                          color: #fff;
+                          border-radius: 2px;
+                        }
+
+                        /* Creates a small triangle extender for the tooltip */
+                        .d3-tip:after {
+                          box-sizing: border-box;
+                          display: inline;
+                          font-size: 10px;
+                          width: 100%;
+                          line-height: 1;
+                          color: rgba(0, 0, 0, 0.8);
+                          content: "\25BC";
+                          position: absolute;
+                          text-align: center;
+                        }
+
+                        /* Style northward tooltips differently */
+                        .d3-tip.n:after {
+                          margin: -1px 0 0 0;
+                          top: 100%;
+                          left: 0;
+                        }
+                    </code>
+                </pre>
+                <p>  Par la suite, il suffit de faire les appels nécessaires pour que notre tip s’affiche lorsque l’on passe la souris par-dessus un point et pour que le tip disparaisse lorsqu’on éloigne la souris. Il faut donc faire un appel et une modification à la façon dont on crée nos points pour ajouter cette fonctionnalité. </p>
+                <pre>
+                    <code>
+                        svg.call(tip);
+
+                        svg.append("g")
+                            .selectAll(".dot")
+                            .data(data)
+                            .enter().append("circle")
+                            .attr("r", 2)
+                            .attr("transform", transform)
+                            .on('mouseover', tip.show)
+                            .on('mouseout', tip.hide);
+                    </code>
+                </pre>
+                <p>  Avec ces quelques étapes, nous avons désormais une façon plus précise de savoir ce que chaque point signifie et où exactement il est placé.  </p>
             </div>
+            <br>
+            <div id="acquisitionImages">
+                <h4> Insertion des images </h4>
+                <p> Pour pouvoir insérer les images, il faut commencer par se créer un pattern pour chaque point de notre graphique. Ce pattern nous permettra d’insérer une image qui représentera la donnée que l’on souhaite présenter. Puisque chacun de ces patterns à un id unique il sera possible plus tard de les déplacer dans le point correspondant. Il faut aussi s’assurer que la taille de notre pattern est presque nulle puisqu’on ne veut pas que nos images apparaissent avant qu’elles soient déplacées dans leur point. Il est nécessaire de se créer un pattern, car l’élément circle ne peut pas se remplir avec une image directement. </p>
+                <pre>
+                    <code>
+                        var config = {
+                            avatar_size : 50,
+                            patchVersion : "6.20.1"
+                            (…)
+                        };
+
+                        var defs = svg.append("defs").attr("id", "imgdefs");
+
+                        data.forEach(function (d) {
+                            var champPattern = defs.append("pattern")
+                                .attr("id", "champ_avatar_" + d.key + d.role)
+                                .attr("height", 1)
+                                .attr("width", 1)
+                                .attr("x", "0")
+                                .attr("y", "0")
+
+                            champPattern.append("image")
+                                .attr("x", 0)
+                                .attr("y", 0)
+                                .attr("height", config.avatar_size)
+                                .attr("width", config.avatar_size)
+                                .attr("xlink:href", "//ddragon.leagueoflegends.com/cdn/" + config.patchVersion + "/img/champion/" + d.key + ".png");
+                        });
+                    </code>
+                </pre>
+                <p> Il reste maintenant à lier ces images à notre point correspondant. Pour arriver à ce résultat, il suffit de modifier certaines propriétés de l’étape à laquelle on ajoute nos points dans le graphique. Les cercles qui représentent nos points devront donc être plus grands (pour bien montrer l’image) et il faudra les remplir avec notre image. L’attribut r permet de définir le rayon de notre cercle et le style fill nous permet de donner le lien vers l’id de notre image. </p>
+                <pre>
+                    <code>
+                        svg.append("g")
+                            .selectAll(".dot")
+                            .data(data)
+                            .enter().append("circle")
+                            .attr("r", config.avatar_size/2)
+                            .attr("transform", transform)
+                            .style("fill", function (d) {
+                                return "url(#champ_avatar_" + d.key + d.role + ")";
+                            })
+                            .on('mouseover', tip.show)
+                            .on('mouseout', tip.hide);
+                    </code>
+                </pre>
+                <p> Après cette étape, toutes nos données devraient apparaître avec l’image qui les lie. Il est absolument nécessaire lier nos données avec un pattern, car un cercle ne peut pas être rempli par un pattern. Cela rend la démarche plus compliquée, mais nettement plus efficace. </p>
+            </div>
+            <br>
             <div id="acquisitionCategorisation">
                 <h4> Catégorisation </h4>
+                <p> Pour catégoriser facilement nos données, nous avons décidé d’utiliser le principe de couleur offert par D3. Ce principe fait en sorte que lorsque l’on envoie une même information (dans notre cas le rôle de notre donnée), D3 redonne toujours la même valeur pour toutes les données ayant la même information. </p>
+                <pre>
+                    <code>
+                        var color = d3.scale.category10();
+                    </code>
+                </pre>
+                <p> Par la suite, il reste à appliquer cette couleur sur nos données pour bien les catégoriser. Puisque nous utilisons des cercles, il faut simplement déclarer quel couleur prendra le contour. On change donc le style du stroke et on lui donne comme valeur notre banque de couleur qui prend en paramètre l’information par laquelle on veut catégoriser nos éléments. Pour terminer cette section, il faut aussi modifier la classe de nos points pour pouvoir par la suite faire des modifications par catégories. </p>
+                <pre>
+                    <code>
+                        svg.append("g").attr("clip-path", "url(#clip)")
+                            .selectAll(".dot")
+                            .data(data)
+                            .enter().append("circle")
+                            .attr("id", "chartPoint")
+                            .attr("r", config.avatar_size/2)
+                            .attr("id", "chartPoint")
+                            .attr("transform", transform)
+                            .style("fill", function (d) {
+                                return "url(#champ_avatar_" + d.key + d.role + ")";
+                            })
+                            .style("stroke", function(d){
+                                return color(d.role);
+                            })
+                            .style("stroke-width", "2.5")
+                            .attr("class", function(d){
+                                return d.role;
+                            })
+                            .on('mouseover', tip.show)
+                            .on('mouseout', tip.hide);
+                    </code>
+                </pre>
+                <p> Pour clarifier ce que signifie chaque couleur, nous aurions pu créer une légende simple, mais dans le contexte de notre application, nous voulions pouvoir cacher certaines catégories de données si nécessaire. Pour cette raison, nous avons décidé de nous créer des checkbox qui nous permettront de cacher nos données lorsque celles-ci seront décochées. </p>
+                <pre>
+                    <xmp>
+                        <div id="roleCheck">
+                            <div class="checkbox roleBox">
+                                <label><input type="checkbox" checked value="" ng-click="changeVisibility('Top')">Top</label>
+                            </div>
+                            <div class="checkbox roleBox">
+                                <label><input type="checkbox" checked value="" ng-click="changeVisibility('Jungle')">Jungle</label>
+                            </div>
+                            <div class="checkbox roleBox">
+                                <label><input type="checkbox" checked value="" ng-click="changeVisibility('Middle')">Middle</label>
+                            </div>
+                            <div class="checkbox roleBox">
+                                <label><input type="checkbox" checked value="" ng-click="changeVisibility('ADC')">ADC</label>
+                            </div>
+                            <div class="checkbox roleBox">
+                                <label><input type="checkbox" checked value="" ng-click="changeVisibility('Support')">Support</label>
+                            </div>
+                        </div>
+                    </xmp>
+                </pre>
+                <p> Par la suite, il nous reste à changer la couleur de nos checkbox en fonction des couleurs précédemment créées. D3 nous permet de sélectionner tous les éléments de la même classe et d’y lier le domaine de la couleur. De cette façon, le premier élément ayant cette classe aura la première couleur du domaine, le deuxième aura la deuxième couleur et ainsi de suite. </p>
+                <pre>
+                    <code>
+                        var changeBoxColor = function(color){
+                            d3.selectAll(".roleBox")
+                                .data(color.domain())
+                                .style("color", color);
+                        };
+                    </code>
+                </pre>
+                <p> Puis, pour pouvoir changer la visibilité de nos points selon la catégorie, on utilise un peu de JQuery. Cette simple fonction prendra tous les éléments ayant la classe passée en paramètre pour changer leur visibilité. </p>
+                <pre>
+                    <code>
+                        $scope.changeVisibility = function(className){
+                            $('.' + className).toggle();
+                        };
+                    </code>
+                </pre>
+                <p> À la fin de cette section, tous nos points devraient avoir un contour de couleur lié à leur catégorie d’information et il devrait être possible de changer leur visibilité en décochant au besoin la case reliée à leur catégorie. </p>
             </div>
+            <br>
             <div id="acquisitionZoom">
                 <h4> Zoom </h4>
+                <p> Pour commencer à utiliser le zoom, il faut commencer par décrire le comportement que l’on souhaite avoir dans celui-ci. En premier lieu, il faut décrire le domaine disponible sur lequel on veut pouvoir faire du drag and drop. Celui-ci devrait se limiter au maximum à la largeur de notre graphique ou à notre domaine.  </p>
+                <p> Ensuite, il faut faire toute la logique pour mettre à jour nos axes et nos points lorsque l’on zoom. Pour mettre à jour nos axes, il faut sélectionner chacun des axes que l’on souhaite mettre à jour et rappeler la fonction créée plus tôt qui permet de construire nos axes. Aussi, il faut sélectionner tous nos points du graphique et rappeler la fonction qui nous permet de faire la translation des points. </p>
+                <pre>
+                    <code>
+                        function zoomed() {
+                            var trans = zoom.translate(),
+                                scale = zoom.scale();
+
+                            //limit drag
+                            var tx = Math.min(0, Math.max(width * (1 - scale), trans[0]));
+                            var ty = Math.min(0, Math.max(height * (1 - scale), trans[1]));
+
+                            zoom.translate([tx, ty]);
+
+                            svg.select(".x.axis").call(xAxis);
+                            svg.select(".y.axis").call(yAxis);
+                            svg.selectAll("#chartPoint")
+                                .attr("transform", transform);
+                        }
+                    </code>
+                </pre>
+                    <p> Pour pouvoir faire en sorte que cette fonction soit appelé à chaque fois que l’on zoom ou que l’on fasse un drag and drop, il faut lier cette méthode avec un des comportements de D3. La fonction de zoom nous dit quoi faire lorsqu’un zoom est fait. C’est aussi dans cette section qu’il est possible de limiter à quel point l’on souhaite zoomer dans le graphique. Après avoir lié le comportement avec nos axes, il suffit de faire un appel de ce comportement avec notre élément graphique pour faire en sorte que chaque changement apporte ses modifications. </p>
+                    <pre>
+                    <code>
+                        var config = {
+                            (…)
+                            max_zoom : 10
+                        };
+
+                        var zoom = d3.behavior.zoom()
+                            .x(x)
+                            .y(y)
+                            .scaleExtent([1, config.max_zoom])
+                            .on("zoom", zoomed);
+
+                        svg.call(zoom);
+                    </code>
+                </pre>
+                    <p> Le comportement du zoom marche désormais, mais il reste tout de même quelques problèmes. Le premier problème est que la section dans laquelle on peut zoomer n’a jamais été défini correctement puisque le zoom fonctionne seulement sur les éléments qui ont été ajouté au svg. Jusqu’à maintenant, les seuls sections qui ont été ajouté au svg sont nos axes et les points du graphique. Donc, puisque les axes ne permettent pas de faire un zoom, seulement les points du graphique nous permettent de zoomer. Pour régler ce problème, il suffit de définir un rectangle qui prendra la zone de graphique. Celui-ci fera en sorte de créer notre boîte sur laquelle il est possible de zoomer. </p>
+                    <pre>
+                    <code>
+                        //appends a rectangle to the svg to make the zoom work
+                        var rect = svg.append("svg:rect")
+                            .attr("width", width)
+                            .attr("height", height)
+                            .style("fill", "none")
+                            .style("pointer-events", "all");
+                    </code>
+                </pre>
+                    <p> L’autre problème qu’il nous reste à corriger est que la section où les points peuvent être placés est encore limité à l’ensemble du graphique. Ceci n’était pas un problème initialement puisque les points ne pouvaient pas faire de translation, mais désormais si l’on tente de faire un zoom on peut remarquer que les points peuvent aller par-dessus les axes. Pour corriger ce problème, il faut ajouter un élément de clipPath. Celui-ci défini l’endroit où les objets peuvent être placé ce qui limitera l’aire où les points peuvent aller à notre coin du graphique. Il suffit de créer cet élément et de par la suite le lier avec nos points pour limiter l’aire d’action de nos points. </p>
+                    <pre>
+                    <code>
+                        //appends a clip to the svg to make sure the points are restricted to the chart rectangle and not the svg
+                        var clip = svg.append("defs").append("svg:clipPath")
+                            .attr("id", "clip")
+                            .append("svg:rect")
+                            .attr("id", "clip-rect")
+                            .attr("x", "0")
+                            .attr("y", "0")
+                            .attr('width', width)
+                            .attr('height', height);
+
+                        //Place Data
+                        svg.append("g").attr("clip-path", "url(#clip)")
+                            .selectAll(".dot")
+                            .data(data)
+                            .enter().append("circle")
+                            .attr("id", "chartPoint")
+                            .attr("r", config.avatar_size/2)
+                            .attr("transform", transform)
+                            .style("fill", function (d) {
+                                return "url(#champ_avatar_" + d.key + d.role + ")";
+                            })
+                            .style("stroke", function(d){
+                                return color(d.role);
+                            })
+                            .style("stroke-width", "2.5")
+                            .attr("class", function(d){
+                                return d.role;
+                            })
+                            .on('mouseover', tip.show)
+                            .on('mouseout', tip.hide);
+                    </code>
+                </pre>
+                <p> Après cette étape, le graphique devrait être désormais complet. On devrait être capable de zoomer, de catégoriser et de bien voir où sont tous nos points sur le graphique. </p>
             </div>
         </div>
         <br>
@@ -186,14 +627,44 @@
         <br>
         <div id="difficultes">
             <h3> Difficultés </h3>
+            <p> La plupart des difficultés rencontrées au cours du projet ont un lien avec les technologies entourant notre application graphique. </p>
+            <p> En effet, au départ du projet nous souhaitions utiliser le cadriciel JavaScript React qui nous semblait être un bon choix pour manipuler nos éléments graphiques. Puisque nous ne connaissions pas trop l’architecture sur laquelle nous devrions construire notre application avec React, nous avons tenté d’utiliser un générateur Yeoman pour nous construire notre application. </p>
+            <p> Malheureusement, il y avait beaucoup de problèmes pour faire fonctionner l’application générée. En effet, certaines composantes avaient des problèmes de compatibilité avec l’application générée. Par exemple, la librairie graphique React-D3 ne voulait pas fonctionner avec ce générateur.  </p>
+            <p> Après beaucoup de tentatives, nous avons trouvé des informations nous signifiant que le projet fonctionnait mieux sur un système Linux, alors nous avons décidé d’exporter notre application vers un système Ubuntu. Malheureusement, nous avons les mêmes problèmes sur un système Linux.  </p>
+            <p> Puisque nous ne voulions pas perdre trop de temps de développement à tenter de trouver un cadriciel qui fonctionnerait bien pour nos besoins, nous avons décidé de retourner vers un cadriciel que nous connaissions bien et que nous savions qui fonctionnerait bien sus nos besoins. </p>
+            <p> Un des autres problèmes que nous avons eu est que nous ne savions pas combien bien gérer les dépendances du projet. En effet, au départ de notre projet, nous gérions nos dépendances seulement avec des balises scripts qui allaient chercher le script en ligne. Ceci posait un problème, car si jamais les sources de ses scripts disparaissaient, notre projet ne fonctionnerait plus. Aussi, cela faisait en sorte que nous devions gérer chacune des dépendances et les rajouter manuellement à chaque fois que nous en ajoutions une, ce qui deviendrait problématique plus le projet grandirait. </p>
+            <p> Pour régler ce problème, nous avons décidé d’utiliser Bower. Ce gestionnaire de dépendances nous a permis d’aller rechercher directement les sources dont nous avions besoin et de mieux gérer les versions des dépendances de notre projet. En plus, le dernier générateur que nous avons utilisé venait directement avec Bower ce qui nous a simplifié le travail dans la configuration du gestionnaire. </p>
+            <p> Les autres problèmes majeurs que nous avons eus sont en lien avec l’application graphique elle-même. Puisque nous ne connaissions pas le fonctionnement de D3, nous avons eu beaucoup de problèmes à comprendre la logique de certains de nos problèmes. Par exemple, il a fallu beaucoup de temps pour bien faire fonctionner le zoom puisque la fonctionnalité demande la création et la liaison de plusieurs éléments. Voici une liste des problèmes que nous avons eus durant la création du zoom : les axes qui ne se synchronisent pas, les points qui ne se synchronisent pas, le zoom pouvant être trop large, le drag and drop qui nous permet d’aller beaucoup trop loin, l’incapacité de zoomer dans le graphique mis à part quand la souris est par-dessus un des points, les points qui passent par-dessus les axes quand on fait un zoom, etc. Autrement dit, le zoom était une des plus grandes difficultés dans la partie graphique de l’application. </p>
+            <p> Néanmoins, malgré tous ces problèmes, nous avons tout de même bien avancé dans le temps par apport à notre projet et nous pouvons dire que nous n’avons pas eu de difficulté insurmontable jusqu’à maintenant. </p>
         </div>
         <br>
         <div id="analyseResultats">
             <h3> Analyse des résultats </h3>
+            <p> Notre but initial était de créer une application de graphique qui pourrait présenter un graphique avec des images à la place de points pour mieux représenter les données. Cette application avait pour but de donner une autre dimension à la façon de voir des données pour comprendre en un seul coup d’œil ce que chaque point représente. </p>
+            <p> Notre but initial a été comblé, mais tous les buts fixés n’ont pas été répondus. À ce propos, un autre de nos buts était d’offrir un service qui permettrait d’arriver facilement au même point que nous nous étions rendus. C’est-à-dire insérer facilement des images dans un graphique. Ce but n’a pas été comblé, car nous avons mis un grand accent sur la conception d’un graphique qui serait plus plaisant à regarder et qui serait plus clair. </p>
+            <p> Effectivement, sans les images dans le graphique, il est possible de voir certaines tendances se former et de bien comprendre l’information qui nous est présentée. Un des seuls effets négatifs de ne pas avoir d’images est qu’il est plus difficile d’identifier les points qui se dégagent des tendances.  </p>
+            <p> Par contre, avec les images, puisque chaque point prend un espace plus grand, il est plus difficile de voir où exactement chaque point est posé. En plus, à cause des images, certains points peuvent être plus facilement cachés, car les points au-dessus de celui-ci sont plus larges et peuvent créer une agglomération qui cacherait celui-ci. Pour résoudre ce problème, il faut soit avoir un graphique plus grand (pour permettre d’avoir le même domaine sur une plus grande surface) ou il faut pouvoir zoomer dans le graphique pour dégager les points les uns des autres. </p>
+            <figure class="figure">
+                <img src="../images/analysis_agglomeration.png" style="width: 100%;" class="figure-img img-fluid rounded">
+                <figcaption class="figure-caption text-center"> Sans zoom et avec des images, une agglomération se crée.</figcaption>
+            </figure>
+            <br>
+            <p> Dans le contexte de notre application, nous avons décidé de prendre plus de temps pour avoir des résultats plus clair grâce à un zoom. Cela nous a permis de dégager les points les uns des autres pour mieux voir où se situe chaque point.  </p>
+            <figure class="figure">
+                <img src="../images/analysis_zoom.png" style="width: 100%;" class="figure-img img-fluid rounded">
+                <figcaption class="figure-caption text-center"> Le zoom permet de dégager les données. </figcaption>
+            </figure>
+            <br>
+            <p> Malheureusement, comme nous étions limités dans le temps et que la création de cette fonctionnalité importante a pris beaucoup de ressources, nous n’avons pas eu le temps de créer un service pour mettre les images avec D3.  </p>
+            <p> Il nous aurait été sûrement possible de créer un service, mais cette fonctionnalité aurait été au détriment de la qualité de notre application ce qui était un coût que nous ne voulions pas nécessairement payer. Les changements d’objectifs et les résultats obtenus sont donc dus aux changements des besoins découverts durant la création de l’application. </p>
         </div>
         <br>
         <div id="conclusionRecherche">
             <h3> Conclusion de la recherche </h3>
+            <p> En conclusion, les travaux effectués nous ont permis d’atteindre notre objectif principal de mettre des images dans un graphique. Par contre, nous n’avons pas été en mesure de créer un service qui nous permettrait d’offrir à d’autres personnes de rajouter directement les images dans leur propre graphique. </p>
+            <p> Grâce à ce projet, nous avons acquis beaucoup de connaissances sur le fonctionnement de la librairie D3 qui est utile pour créer des applications graphiques.  Nous avons été en mesure de créer un graphique complexe et complet qui offre une autre façon de voir des résultats statistiques et qui permet de plus facilement identifier les points se dégageant des tendances. </p>
+            <p> Considérant que nous n’avions aucune connaissance sur la librairie graphique D3, nous pouvons dire que nous avons fait beaucoup d’avancées par rapport à nos connaissances et nos incertitudes. En effet, la plupart de nos incertitudes étaient en lien avec notre capacité à créer l’application et par rapport aux technologies que nous devrions utiliser. Notre résultat final prouve que nos incertitudes ont été éclairées. </p>
+            <p> Pour continuer le projet, nous pourrions tenter de faire un de nos objectifs de projet qui était de créer un service qui permettrait de mettre les images dans le graphique. Aussi, nous pourrions avancer encore plus notre graphique en permettant de comparer d’autres statistiques que celles que nous avons utilisé.  </p>
         </div>
         <br>
         <div id="biliographie">
