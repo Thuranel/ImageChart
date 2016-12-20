@@ -10,6 +10,8 @@
 angular.module('imageChartApp')
     .controller('MainCtrl', function ($scope) {
 
+        $scope.champName="";
+
         $scope.init = function() {
 
             //Initialize variables
@@ -114,11 +116,16 @@ angular.module('imageChartApp')
                 // setup stroke color
                 var color = d3.scale.category10();
 
+                var tipTimeOut;
+
                 //Place Data
                 svg.append("g").attr("clip-path", "url(#clip)")
                     .selectAll(".dot")
                     .data(data)
                     .enter().append("circle")
+                    .attr("name", function(d){
+                        return d.title;
+                    })
                     .attr("id", "chartPoint")
                     .attr("r", config.avatar_size/2)
                     .attr("transform", transform)
@@ -132,11 +139,10 @@ angular.module('imageChartApp')
                     .attr("class", function(d){
                         return d.role;
                     })
-                    .on('mouseover', tip.show)
+                    .on('mousemove', tip.show)
                     .on('mouseout', tip.hide);
 
                 changeBoxColor(color);
-
 
                 var zoom = d3.behavior.zoom()
                     .x(x)
@@ -169,10 +175,6 @@ angular.module('imageChartApp')
             });
         };
 
-        $scope.changeVisibility = function(className){
-            $('.' + className).toggle();
-        };
-
         var loadXaxis = function(svg, xAxis, height, width){
             svg.append("g")
                 .attr("class", "x axis")
@@ -202,9 +204,10 @@ angular.module('imageChartApp')
         //load tip
         var tip = d3.tip()
             .attr('class', 'd3-tip')
+            .attr('id', 'tip')
             .offset([-10, 0])
             .html(function (d) {
-                return "<strong> " + d.key + " " + d.role + " </strong>" +
+                return "<strong> " + d.title + " " + d.role + " </strong>" +
                     "<br>" +
                     "<strong>Win %:</strong> <span>" + d.general.winPercent + "</span> " +
                     "<br>" +
@@ -234,7 +237,26 @@ angular.module('imageChartApp')
                     .attr("y", 0)
                     .attr("height", config.avatar_size)
                     .attr("width", config.avatar_size)
-                    .attr("xlink:href", "//ddragon.leagueoflegends.com/cdn/" + config.patchVersion + "/img/champion/" + d.key + ".png");
+                    .attr("xlink:href", "images/champs/" + d.key + ".png");
+            });
+        };
+
+
+        $('input[type=checkbox][name="roleBox"]').change(function(){
+            var o = this.checked ? 1 : 0;
+            $('.' + this.value).css("opacity", o);
+        });
+
+        $scope.filterVisibilityByName = function(){
+
+            $("circle#chartPoint").filter(function(){
+                //if input champName is a substring of this circle name, hide it. Otherwise show it.
+                if($(this).attr('name').toLowerCase().indexOf($scope.champName.toLowerCase()) < 0){
+                    $(this).hide();
+                }
+                else{
+                    $(this).show();
+                }
             });
         };
     });

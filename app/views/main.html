@@ -1,25 +1,30 @@
-<div class="row" ng-controller="MainCtrl">
-    <div id="chart" class="col-xs-12 col-sm-12 col-md-11 col-lg-11">
+<div class="row container-fluid" ng-controller="MainCtrl">
+    <div id="chart" class="col-xs-12 col-sm-12 col-md-10 col-lg-10">
 
     </div>
-    <form data-ng-init="init()" class="col-xs-1 col-sm-1 col-md-1 col-lg-1">
-        <div id="roleCheck">
-            <div class="checkbox roleBox">
-                <label><input type="checkbox" checked value="" ng-click="changeVisibility('Top')">Top</label>
+    <div class="col-xs-12 col-sm-12 col-md-2 col-lg-2" data-ng-init="init()">
+        <form>
+            <div id="roleCheck">
+                <div class="checkbox roleBox">
+                    <label><input type="checkbox" checked name="roleBox" id="topCheckbox" value="Top">Top</label>
+                </div>
+                <div class="checkbox roleBox">
+                    <label><input type="checkbox" checked name="roleBox" id="jungleCheckbox" value="Jungle">Jungle</label>
+                </div>
+                <div class="checkbox roleBox">
+                    <label><input type="checkbox" checked name="roleBox" id="middleCheckbox" value="Middle">Middle</label>
+                </div>
+                <div class="checkbox roleBox">
+                    <label><input type="checkbox" checked name="roleBox" id="ADCCheckbox" value="ADC">ADC</label>
+                </div>
+                <div class="checkbox roleBox">
+                    <label><input type="checkbox" checked name="roleBox" id="supportCheckbox" value="Support">Support</label>
+                </div>
             </div>
-            <div class="checkbox roleBox">
-                <label><input type="checkbox" checked value="" ng-click="changeVisibility('Jungle')">Jungle</label>
+            <div id="champSearchBar">
+                <label> Search for a champ: <input type="text" ng-model="champName" ng-keyup="filterVisibilityByName()" autofocus></label>
             </div>
-            <div class="checkbox roleBox">
-                <label><input type="checkbox" checked value="" ng-click="changeVisibility('Middle')">Middle</label>
-            </div>
-            <div class="checkbox roleBox">
-                <label><input type="checkbox" checked value="" ng-click="changeVisibility('ADC')">ADC</label>
-            </div>
-            <div class="checkbox roleBox">
-                <label><input type="checkbox" checked value="" ng-click="changeVisibility('Support')">Support</label>
-            </div>
-        </div>
-    </form>
+        </form>
+    </div>
 </div>
 <br>
